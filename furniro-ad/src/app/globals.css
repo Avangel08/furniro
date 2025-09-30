@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Furniro Design System - Warm & Neutral Palette */
+    --background: 40 15% 98%; /* Ivory white */
+    --foreground: 25 15% 15%; /* Charcoal brown */
+
+    --card: 35 25% 96%; /* Warm white */
+    --card-foreground: 25 15% 15%;
+
+    --popover: 35 25% 96%;
+    --popover-foreground: 25 15% 15%;
+
+    /* Warm beige primary */
+    --primary: 35 45% 75%; /* Warm beige */
+    --primary-foreground: 25 15% 15%;
+
+    /* Light beige secondary */
+    --secondary: 40 20% 88%; /* Light beige */
+    --secondary-foreground: 25 15% 15%;
+
+    /* Soft gray muted */
+    --muted: 30 10% 92%; /* Soft gray */
+    --muted-foreground: 25 8% 45%;
+
+    /* Warm accent */
+    --accent: 45 35% 82%; /* Warm sand */
+    --accent-foreground: 25 15% 15%;
+
+    --destructive: 0 65% 55%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 35 15% 88%; /* Light warm gray */
+    --input: 35 15% 92%; /* Slightly lighter input */
+    --ring: 35 45% 65%; /* Focused ring */
+
+    --radius: 0.75rem; /* Slightly more rounded */
+
+    /* Sidebar warm tones */
+    --sidebar-background: 30 25% 92%; /* Warm light gray */
+    --sidebar-foreground: 25 15% 25%;
+    --sidebar-primary: 35 45% 65%; /* Warm beige active */
+    --sidebar-primary-foreground: 25 15% 15%;
+    --sidebar-accent: 35 20% 85%;
+    --sidebar-accent-foreground: 25 15% 20%;
+    --sidebar-border: 35 15% 85%;
+    --sidebar-ring: 35 45% 65%;
+
+    /* Custom Furniro tokens */
+    --furniro-beige: 35 45% 75%;
+    --furniro-light-beige: 40 30% 85%;
+    --furniro-sand: 45 35% 82%;
+    --furniro-cream: 50 40% 92%;
+    --furniro-brown: 25 35% 35%;
+    --furniro-dark-brown: 20 40% 25%;
+    
+    /* Gradients */
+    --gradient-warm: linear-gradient(135deg, hsl(var(--furniro-cream)), hsl(var(--furniro-light-beige)));
+    --gradient-beige: linear-gradient(135deg, hsl(var(--furniro-beige)), hsl(var(--furniro-sand)));
+    --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(var(--muted)));
+
+    /* Shadows */
+    --shadow-warm: 0 4px 20px -4px hsl(var(--furniro-beige) / 0.15);
+    --shadow-elegant: 0 8px 30px -8px hsl(var(--furniro-brown) / 0.12);
+    --shadow-soft: 0 2px 12px -2px hsl(var(--border) / 0.8);
+
+    /* Transitions */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
