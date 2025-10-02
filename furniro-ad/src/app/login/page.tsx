@@ -38,7 +38,7 @@ export default function LoginPage() {
           title: "Welcome back!",
           description: "Successfully logged into Furniro Admin Dashboard",
         });
-        router.push("/dashboard");
+        router.push("/dashboard/products");
       } else {
         toast({
           title: "Login failed",

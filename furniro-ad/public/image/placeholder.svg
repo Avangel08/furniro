@@ -1,0 +1,7 @@
+<svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="48" height="48" rx="8" fill="#F5F5DC"/>
+  <path d="M20 7L12 11L20 15L28 11L20 7Z" stroke="#8B4513" stroke-width="2" fill="none"/>
+  <path d="M12 11V21L20 25V15L12 11Z" stroke="#8B4513" stroke-width="2" fill="none"/>
+  <path d="M20 15V25L28 21V11L20 15Z" stroke="#8B4513" stroke-width="2" fill="none"/>
+  <text x="24" y="35" font-family="Arial, sans-serif" font-size="8" fill="#8B4513" text-anchor="middle">No Image</text>
+</svg>

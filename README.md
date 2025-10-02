@@ -18,7 +18,7 @@
 #25/9 hoàn thành html->nextjs
 
 --npm install
---npm run dev: locall:3000 
+--npm run dev
 
 
 

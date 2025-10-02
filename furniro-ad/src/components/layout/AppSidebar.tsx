@@ -1,11 +1,9 @@
 "use client";
 
 import { 
-  LayoutDashboard, 
   Users, 
   Package, 
   Image, 
-  Settings,
   Store 
 } from "lucide-react";
 import Link from "next/link";
@@ -24,11 +22,9 @@ import {
 } from "@/components/ui/sidebar";
 
 const navigation = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Products", url: "/dashboard/products", icon: Package },
   { title: "Customers", url: "/dashboard/customers", icon: Users },
   { title: "Banners", url: "/dashboard/banners", icon: Image },
-  { title: "Settings", url: "/dashboard/settings", icon: Settings },
 ];
 
 export const AppSidebar = () => {
