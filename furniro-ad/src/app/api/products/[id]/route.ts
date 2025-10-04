@@ -74,7 +74,8 @@ export async function PUT(
       oldPrice: body.oldPrice !== undefined ? (body.oldPrice ? parseFloat(body.oldPrice) : null) : undefined,
       stock: body.stock ? parseInt(body.stock) : undefined,
       tags: body.tags ? body.tags.split(',').map((tag: string) => tag.trim()) : undefined,
-      images: body.images !== undefined ? body.images : undefined
+      images: body.images !== undefined ? body.images : undefined,
+      detailedImages: body.detailedImages !== undefined ? body.detailedImages : undefined
     };
 
     const product = await Product.findByIdAndUpdate(

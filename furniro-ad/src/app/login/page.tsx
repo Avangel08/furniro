@@ -31,23 +31,45 @@ export default function LoginPage() {
 
     setIsLoading(true);
     
-    // Simulate login delay
-    setTimeout(() => {
-      if (email === "admin@furniro.com" && password === "password") {
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Store access token in localStorage
+        localStorage.setItem('adminAccessToken', data.data.accessToken);
+        localStorage.setItem('adminUser', JSON.stringify(data.data.user));
+
         toast({
           title: "Welcome back!",
-          description: "Successfully logged into Furniro Admin Dashboard",
+          description: `Successfully logged in as ${data.data.user.name}`,
         });
+        
         router.push("/dashboard/products");
       } else {
         toast({
           title: "Login failed",
-          description: "Invalid email or password. Use admin@furniro.com / password",
+          description: data.error || "Invalid credentials",
           variant: "destructive",
         });
       }
+    } catch (error) {
+      console.error('Login error:', error);
+      toast({
+        title: "Login failed",
+        description: "Network error. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -127,7 +149,7 @@ export default function LoginPage() {
             </form>
             
             <div className="mt-6 text-center text-sm text-muted-foreground">
-              Demo credentials: admin@furniro.com / password
+              Demo credentials: admin@furniro.com / password123
             </div>
           </CardContent>
         </Card>

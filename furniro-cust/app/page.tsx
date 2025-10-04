@@ -1,6 +1,96 @@
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Script from 'next/script';
+import { fetchProducts, formatPrice, getProductImage, calculateDiscountPercentage, Product } from '../lib/api';
+import { Suspense } from 'react';
+
+// Product card component
+function ProductCard({ product }: { product: Product }) {
+  const discountPercentage = calculateDiscountPercentage(product.price, product.oldPrice);
+  const productImage = getProductImage(product);
+
+  return (
+    <div className="product-card">
+      <div className="product-image">
+        <a href={`/product/${product._id}`}>
+          <img src={productImage} alt={product.name} className="product-img" />
+        </a>
+        {discountPercentage && (
+          <div className="product-badge discount">-{discountPercentage}%</div>
+        )}
+        {!product.oldPrice && new Date(product.createdAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) && (
+          <div className="product-badge new">New</div>
+        )}
+        <div className="product-overlay">
+          <button className="add-to-cart-btn" data-id={product._id}>Add to cart</button>
+          <div className="product-actions">
+            <span className="action-item"><i className="icon">↗</i> Share</span>
+            <span className="action-item"><i className="icon">⚖</i> Compare</span>
+            <span className="action-item"><i className="icon">♡</i> Like</span>
+          </div>
+        </div>
+      </div>
+      <div className="product-info">
+        <h3 className="product-name">
+          <a href={`/product/${product._id}`}>{product.name}</a>
+        </h3>
+        <p className="product-description">{product.description}</p>
+        <div className="product-price">
+          <span className="current-price">{formatPrice(product.price)}</span>
+          {product.oldPrice && (
+            <span className="old-price">{formatPrice(product.oldPrice)}</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Our Products section component
+async function OurProductsSection() {
+  try {
+    const response = await fetchProducts({ limit: 8 });
+    
+    if (!response.success) {
+      return (
+        <section className="products-section">
+          <div className="products-container">
+            <h2 className="products-title">Our Products</h2>
+            <p className="text-center text-gray-500">Failed to load products</p>
+          </div>
+        </section>
+      );
+    }
+
+    const products = response.data || [];
+
+    return (
+      <section className="products-section">
+        <div className="products-container">
+          <h2 className="products-title">Our Products</h2>
+          <div className="products-grid">
+            {products.map((product) => (
+              <ProductCard key={product._id} product={product} />
+            ))}
+          </div>
+          <div className="show-more-container">
+            <button className="show-more-btn">Show More</button>
+          </div>
+        </div>
+      </section>
+    );
+  } catch (error) {
+    console.error('Error loading products:', error);
+    return (
+      <section className="products-section">
+        <div className="products-container">
+          <h2 className="products-title">Our Products</h2>
+          <p className="text-center text-gray-500">Failed to load products</p>
+        </div>
+      </section>
+    );
+  }
+}
 
 export default function HomePage() {
   return (
@@ -66,192 +156,29 @@ export default function HomePage() {
           </div>
         </section>
 
-        <section className="products-section">
-          <div className="products-container">
-            <h2 className="products-title">Our Products</h2>
-            <div className="products-grid">
-              <div className="product-card">
-                <div className="product-image">
-                  <a href="/product/syltherine"><img src="/image/image 1.png" alt="Syltherine Chair" className="product-img" /></a>
-                  <div className="product-badge discount">-30%</div>
-                  <div className="product-overlay">
-                    <button className="add-to-cart-btn" data-id="syltherine">Add to cart</button>
-                    <div className="product-actions">
-                      <span className="action-item"><i className="icon">↗</i> Share</span>
-                      <span className="action-item"><i className="icon">⚖</i> Compare</span>
-                      <span className="action-item"><i className="icon">♡</i> Like</span>
+        <Suspense fallback={
+          <section className="products-section">
+            <div className="products-container">
+              <h2 className="products-title">Our Products</h2>
+              <div className="products-grid">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="product-card animate-pulse">
+                    <div className="product-image">
+                      <div className="bg-gray-200 h-64 w-full rounded"></div>
+                    </div>
+                    <div className="product-info">
+                      <div className="bg-gray-200 h-4 w-3/4 mb-2 rounded"></div>
+                      <div className="bg-gray-200 h-3 w-1/2 mb-2 rounded"></div>
+                      <div className="bg-gray-200 h-4 w-1/3 rounded"></div>
                     </div>
                   </div>
-                </div>
-                <div className="product-info">
-                  <h3 className="product-name"><a href="/product/syltherine">Syltherine</a></h3>
-                  <p className="product-description">Stylish cafe chair</p>
-                  <div className="product-price">
-                    <span className="current-price">$ 2.500.000</span>
-                    <span className="old-price">$ 3.500.000</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="product-card">
-                <div className="product-image">
-                  <a href="/product/leviosa"><img src="/image/image 2.png" alt="Leviosa Chair" className="product-img" /></a>
-                  <div className="product-overlay">
-                    <button className="add-to-cart-btn" data-id="leviosa">Add to cart</button>
-                    <div className="product-actions">
-                      <span className="action-item"><i className="icon">↗</i> Share</span>
-                      <span className="action-item"><i className="icon">⚖</i> Compare</span>
-                      <span className="action-item"><i className="icon">♡</i> Like</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="product-info">
-                  <h3 className="product-name"><a href="/product/leviosa">Leviosa</a></h3>
-                  <p className="product-description">Stylish cafe chair</p>
-                  <div className="product-price">
-                    <span className="current-price">$ 2.500.000</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="product-card">
-                <div className="product-image">
-                  <a href="/product/lolito"><img src="/image/image 3.png" alt="Lolito Sofa" className="product-img" /></a>
-                  <div className="product-badge discount">-50%</div>
-                  <div className="product-overlay">
-                    <button className="add-to-cart-btn" data-id="lolito">Add to cart</button>
-                    <div className="product-actions">
-                      <span className="action-item"><i className="icon">↗</i> Share</span>
-                      <span className="action-item"><i className="icon">⚖</i> Compare</span>
-                      <span className="action-item"><i className="icon">♡</i> Like</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="product-info">
-                  <h3 className="product-name"><a href="/product/lolito">Lolito</a></h3>
-                  <p className="product-description">Luxury big sofa</p>
-                  <div className="product-price">
-                    <span className="current-price">$ 7.000.000</span>
-                    <span className="old-price">$ 14.000.000</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="product-card">
-                <div className="product-image">
-                  <a href="/product/respira"><img src="/image/image 7.png" alt="Respira Table" className="product-img" /></a>
-                  <div className="product-badge new">New</div>
-                  <div className="product-overlay">
-                    <button className="add-to-cart-btn" data-id="respira">Add to cart</button>
-                    <div className="product-actions">
-                      <span className="action-item"><i className="icon">↗</i> Share</span>
-                      <span className="action-item"><i className="icon">⚖</i> Compare</span>
-                      <span className="action-item"><i className="icon">♡</i> Like</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="product-info">
-                  <h3 className="product-name"><a href="/product/respira">Respira</a></h3>
-                  <p className="product-description">Outdoor bar table and stool</p>
-                  <div className="product-price">
-                    <span className="current-price">$ 500.000</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="product-card">
-                <div className="product-image">
-                  <a href="/product/grifo"><img src="/image/Image 5.png" alt="Grifo Lamp" className="product-img" /></a>
-                  <div className="product-overlay">
-                    <button className="add-to-cart-btn" data-id="grifo">Add to cart</button>
-                    <div className="product-actions">
-                      <span className="action-item"><i className="icon">↗</i> Share</span>
-                      <span className="action-item"><i className="icon">⚖</i> Compare</span>
-                      <span className="action-item"><i className="icon">♡</i> Like</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="product-info">
-                  <h3 className="product-name"><a href="/product/grifo">Grifo</a></h3>
-                  <p className="product-description">Night lamp</p>
-                  <div className="product-price">
-                    <span className="current-price">$ 1.500.000</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="product-card">
-                <div className="product-image">
-                  <a href="/product/muggo"><img src="/image/image 6.png" alt="Muggo Mug" className="product-img" /></a>
-                  <div className="product-badge new">New</div>
-                  <div className="product-overlay">
-                    <button className="add-to-cart-btn" data-id="muggo">Add to cart</button>
-                    <div className="product-actions">
-                      <span className="action-item"><i className="icon">↗</i> Share</span>
-                      <span className="action-item"><i className="icon">⚖</i> Compare</span>
-                      <span className="action-item"><i className="icon">♡</i> Like</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="product-info">
-                  <h3 className="product-name"><a href="/product/muggo">Muggo</a></h3>
-                  <p className="product-description">Small mug</p>
-                  <div className="product-price">
-                    <span className="current-price">$ 150.000</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="product-card">
-                <div className="product-image">
-                  <a href="/product/pingky"><img src="/image/image 7.png" alt="Pingky Bed" className="product-img" /></a>
-                  <div className="product-badge discount">-50%</div>
-                  <div className="product-overlay">
-                    <button className="add-to-cart-btn" data-id="pingky">Add to cart</button>
-                    <div className="product-actions">
-                      <span className="action-item"><i className="icon">↗</i> Share</span>
-                      <span className="action-item"><i className="icon">⚖</i> Compare</span>
-                      <span className="action-item"><i className="icon">♡</i> Like</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="product-info">
-                  <h3 className="product-name"><a href="/product/pingky">Pingky</a></h3>
-                  <p className="product-description">Cute bed set</p>
-                  <div className="product-price">
-                    <span className="current-price">$ 7.000.000</span>
-                    <span className="old-price">$ 14.000.000</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="product-card">
-                <div className="product-image">
-                  <a href="/product/potty"><img src="/image/Images (2).png" alt="Potty Pot" className="product-img" /></a>
-                  <div className="product-badge new">New</div>
-                  <div className="product-overlay">
-                    <button className="add-to-cart-btn" data-id="potty">Add to cart</button>
-                    <div className="product-actions">
-                      <span className="action-item"><i className="icon">↗</i> Share</span>
-                      <span className="action-item"><i className="icon">⚖</i> Compare</span>
-                      <span className="action-item"><i className="icon">♡</i> Like</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="product-info">
-                  <h3 className="product-name"><a href="/product/potty">Potty</a></h3>
-                  <p className="product-description">Minimalist flower pot</p>
-                  <div className="product-price">
-                    <span className="current-price">$ 500.000</span>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
-            <div className="show-more-container">
-              <button className="show-more-btn">Show More</button>
-            </div>
-          </div>
-        </section>
+          </section>
+        }>
+          <OurProductsSection />
+        </Suspense>
 
         <section className="rooms-inspiration-section">
           <div className="rooms-container">

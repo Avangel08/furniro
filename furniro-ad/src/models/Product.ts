@@ -26,6 +26,7 @@ export interface IProduct extends Document {
   category: 'Dining' | 'Living' | 'Bedroom';
   brand?: string;
   description: string;
+  detailedDescription?: string;
   price: number;
   oldPrice?: number;
   stock: number;
@@ -36,6 +37,7 @@ export interface IProduct extends Document {
   color?: string;
   tags?: string[];
   images: string[];
+  detailedImages?: string[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -77,6 +79,10 @@ const ProductSchema = new Schema<IProduct>({
     required: [true, 'Description is required'],
     minlength: [10, 'Description must be at least 10 characters'],
     maxlength: [2000, 'Description cannot exceed 2000 characters']
+  },
+  detailedDescription: {
+    type: String,
+    maxlength: [5000, 'Detailed description cannot exceed 5000 characters']
   },
   price: {
     type: Number,
@@ -127,6 +133,10 @@ const ProductSchema = new Schema<IProduct>({
     maxlength: [50, 'Each tag cannot exceed 50 characters']
   }],
   images: [{
+    type: String,
+    trim: true
+  }],
+  detailedImages: [{
     type: String,
     trim: true
   }]

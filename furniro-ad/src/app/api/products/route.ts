@@ -100,7 +100,8 @@ export async function POST(request: NextRequest) {
       oldPrice: body.oldPrice ? parseFloat(body.oldPrice) : undefined,
       stock: parseInt(body.stock),
       tags: body.tags ? body.tags.split(',').map((tag: string) => tag.trim()) : [],
-      images: body.images || [] // Add images field
+      images: body.images || [], // Add images field
+      detailedImages: body.detailedImages || [] // Add detailed images field
     });
 
     await product.save();

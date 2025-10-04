@@ -49,7 +49,9 @@ function closeCart() {
     if (drawer) drawer.classList.remove('active');
 }
 
-function formatPrice(p) { return p; }
+function formatPrice(p) { 
+  return `$${p.toLocaleString()}`;
+}
 
 function renderCart() {
     const itemsEl = document.getElementById('cartItems');

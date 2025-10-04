@@ -2,27 +2,110 @@ import Header from '../../components/Header';
 import Footer from '../../components/Footer';
 import Script from 'next/script';
 import { notFound } from 'next/navigation';
+import { fetchProduct, formatPrice, getProductImage, calculateDiscountPercentage, Product } from '../../../lib/api';
+import { Suspense } from 'react';
 
-const PRODUCT_DATA = {
-  syltherine: { id: 'syltherine', name: 'Syltherine', description: 'Stylish cafe chair', price: '$ 2.500.000', oldPrice: '$ 3.500.000', image: '/image/image 1.png', category: 'Chair', sku: 'SYLT-001', tags: ['chair','cafe','stylish'] },
-  leviosa: { id: 'leviosa', name: 'Leviosa', description: 'Stylish cafe chair', price: '$ 2.500.000', oldPrice: undefined, image: '/image/image 2.png', category: 'Chair', sku: 'LEVI-002', tags: ['chair','minimal'] },
-  lolito: { id: 'lolito', name: 'Lolito', description: 'Luxury big sofa', price: '$ 7.000.000', oldPrice: '$ 14.000.000', image: '/image/image 3.png', category: 'Sofa', sku: 'LOLI-003', tags: ['sofa','luxury'] },
-  respira: { id: 'respira', name: 'Respira', description: 'Outdoor bar table and stool', price: '$ 500.000', oldPrice: undefined, image: '/image/image 7.png', category: 'Table', sku: 'RESP-004', tags: ['outdoor','bar'] },
-  grifo: { id: 'grifo', name: 'Grifo', description: 'Night lamp', price: '$ 1.500.000', oldPrice: undefined, image: '/image/Image 5.png', category: 'Lamp', sku: 'GRIF-005', tags: ['lamp','night'] },
-  muggo: { id: 'muggo', name: 'Muggo', description: 'Small mug', price: '$ 150.000', oldPrice: undefined, image: '/image/image 6.png', category: 'Mug', sku: 'MUGG-006', tags: ['mug'] },
-  pingky: { id: 'pingky', name: 'Pingky', description: 'Cute bed set', price: '$ 7.000.000', oldPrice: '$ 14.000.000', image: '/image/image 7.png', category: 'Bed', sku: 'PING-007', tags: ['bed','cute'] },
-  potty: { id: 'potty', name: 'Potty', description: 'Minimalist flower pot', price: '$ 500.000', oldPrice: undefined, image: '/image/Images (2).png', category: 'Decor', sku: 'POTT-008', tags: ['pot','minimal'] },
-} as const;
+interface ProductPageProps {
+  params: { id: string };
+}
 
-export default function ProductPage({ params }: { params: { id: string } }) {
-  const id = params.id as keyof typeof PRODUCT_DATA;
-  const p = PRODUCT_DATA[id];
-  if (!p) return notFound();
+// Loading component for product detail
+function ProductDetailLoading() {
+  return (
+    <div className="animate-pulse">
+      <section className="product-breadcrumb-section">
+        <div className="product-breadcrumb-container">
+          <nav className="breadcrumb breadcrumb-light">
+            <div className="bg-gray-200 h-4 w-12 rounded"></div>
+            <span className="breadcrumb-separator">&gt;</span>
+            <div className="bg-gray-200 h-4 w-16 rounded"></div>
+            <span className="breadcrumb-separator">&gt;</span>
+            <div className="bg-gray-200 h-4 w-24 rounded"></div>
+          </nav>
+        </div>
+      </section>
+
+      <section className="product-detail-section">
+        <div className="product-detail-container">
+          <div className="product-detail-gallery">
+            <div className="product-thumbs">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="bg-gray-200 h-16 w-16 rounded"></div>
+              ))}
+            </div>
+            <div className="product-main-image">
+              <div className="bg-gray-200 h-96 w-96 rounded"></div>
+            </div>
+          </div>
+          <div className="product-detail-info">
+            <div className="bg-gray-200 h-8 w-48 mb-4 rounded"></div>
+            <div className="bg-gray-200 h-6 w-32 mb-4 rounded"></div>
+            <div className="bg-gray-200 h-4 w-full mb-2 rounded"></div>
+            <div className="bg-gray-200 h-4 w-3/4 mb-4 rounded"></div>
+            <div className="bg-gray-200 h-10 w-full mb-4 rounded"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+// Related products component
+function RelatedProductCard({ product }: { product: Product }) {
+  const discountPercentage = calculateDiscountPercentage(product.price, product.oldPrice);
+  const productImage = getProductImage(product);
 
   return (
-    <>
-      <Header />
-      <main>
+    <div className="product-card">
+      <div className="product-image">
+        <a href={`/product/${product._id}`}>
+          <img src={productImage} alt={product.name} className="product-img" />
+        </a>
+        {discountPercentage && (
+          <div className="product-badge discount">-{discountPercentage}%</div>
+        )}
+        {!product.oldPrice && new Date(product.createdAt) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) && (
+          <div className="product-badge new">New</div>
+        )}
+        <div className="product-overlay">
+          <button className="add-to-cart-btn" data-id={product._id}>Add to cart</button>
+          <div className="product-actions">
+            <span className="action-item"><i className="icon">↗</i> Share</span>
+            <span className="action-item"><i className="icon">⚖</i> Compare</span>
+            <span className="action-item"><i className="icon">♡</i> Like</span>
+          </div>
+        </div>
+      </div>
+      <div className="product-info">
+        <h3 className="product-name">
+          <a href={`/product/${product._id}`}>{product.name}</a>
+        </h3>
+        <p className="product-description">{product.description}</p>
+        <div className="product-price">
+          <span className="current-price">{formatPrice(product.price)}</span>
+          {product.oldPrice && (
+            <span className="old-price">{formatPrice(product.oldPrice)}</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Main product detail component
+async function ProductDetail({ id }: { id: string }) {
+  try {
+    const productResponse = await fetchProduct(id);
+    
+    if (!productResponse.success) {
+      return notFound();
+    }
+
+    const { data: product, relatedProducts } = productResponse;
+    const productImage = getProductImage(product);
+
+    return (
+      <>
         <section className="product-breadcrumb-section">
           <div className="product-breadcrumb-container">
             <nav className="breadcrumb breadcrumb-light">
@@ -30,7 +113,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
               <span className="breadcrumb-separator">&gt;</span>
               <a href="/shop">Shop</a>
               <span className="breadcrumb-separator">&gt;</span>
-              <span className="breadcrumb-current">{p.name}</span>
+              <span className="breadcrumb-current">{product.name}</span>
             </nav>
           </div>
         </section>
@@ -39,26 +122,65 @@ export default function ProductPage({ params }: { params: { id: string } }) {
           <div className="product-detail-container" id="productDetailContainer">
             <div className="product-detail-gallery">
               <div className="product-thumbs" id="productThumbs">
-                <img src="/image/Rectangle 24.png" alt="thumb" className="product-thumb active" />
-                <img src="/image/Rectangle 25.png" alt="thumb" className="product-thumb" />
-                <img src="/image/Rectangle 43.png" alt="thumb" className="product-thumb" />
-                <img src="/image/Rectangle 24.png" alt="thumb" className="product-thumb" />
+                {product.images && product.images.length > 0 ? (
+                  product.images.map((image, index) => (
+                    <img 
+                      key={index}
+                      src={getProductImage(product, index)} 
+                      alt={`${product.name} thumb ${index + 1}`} 
+                      className={`product-thumb ${index === 0 ? 'active' : ''}`} 
+                    />
+                  ))
+                ) : (
+                  Array.from({ length: 4 }).map((_, index) => (
+                    <img key={index} src="/image/Rectangle 24.png" alt="thumb" className="product-thumb" />
+                  ))
+                )}
               </div>
-              <div className="product-main-image">
-                <img id="productImage" className="product-detail-image" src={p.image} alt={p.name} />
+              <div className="product-main-image" style={{
+                height: '420px',
+                padding: '16px',
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backgroundColor: '#f9f7f3',
+                borderRadius: '12px',
+                border: '1px solid #eee'
+              }}>
+                <img 
+                  id="productImage" 
+                  className="product-detail-image" 
+                  src={productImage} 
+                  alt={product.name}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    objectPosition: 'center',
+                    borderRadius: '10px'
+                  }}
+                />
               </div>
             </div>
             <div className="product-detail-info">
-              <h1 id="productName" className="product-detail-name">{p.name}</h1>
+              <h1 id="productName" className="product-detail-name">{product.name}</h1>
               <div className="product-detail-price-line">
-                <span id="productPrice" className="product-detail-price-number">{p.price}</span>
-                {p.oldPrice ? <span id="productOldPrice" className="product-detail-old-price">{p.oldPrice}</span> : null}
+                <span id="productPrice" className="product-detail-price-number">{formatPrice(product.price)}</span>
+                {product.oldPrice && (
+                  <span id="productOldPrice" className="product-detail-old-price">{formatPrice(product.oldPrice)}</span>
+                )}
               </div>
               <div className="product-rating-line">
-                <div className="stars" aria-label="rating"><span>★</span><span>★</span><span>★</span><span>★</span><span>☆</span></div>
-                <span className="review-count"><span id="reviewsCount">5</span> Customer Review</span>
+                <div className="stars" aria-label="rating">
+                  <span>★</span><span>★</span><span>★</span><span>★</span><span>☆</span>
+                </div>
+                <span className="review-count">
+                  <span id="reviewsCount">5</span> Customer Review
+                </span>
               </div>
-              <p id="productDescription" className="product-detail-description">{p.description}</p>
+              <p id="productDescription" className="product-detail-description">{product.description}</p>
+              
               <div className="product-options">
                 <div className="option-group">
                   <div className="option-label">Size</div>
@@ -77,6 +199,7 @@ export default function ProductPage({ params }: { params: { id: string } }) {
                   </div>
                 </div>
               </div>
+              
               <div className="product-actions-line">
                 <div className="quantity-selector">
                   <button className="qty-btn" id="qtyMinus">-</button>
@@ -86,11 +209,13 @@ export default function ProductPage({ params }: { params: { id: string } }) {
                 <button className="add-to-cart-btn" id="detailAddToCart">Add To Cart</button>
                 <button className="secondary-btn" id="compareBtn">+ Compare</button>
               </div>
+              
               <div className="product-meta">
-                <div><strong>SKU:</strong> <span id="productSku">{p.sku}</span></div>
-                <div><strong>Category:</strong> <span id="productCategory">{p.category}</span></div>
-                <div><strong>Tags:</strong> <span id="productTags">{p.tags.join(', ')}</span></div>
-                <div className="share-line"><strong>Share:</strong>
+                <div><strong>SKU:</strong> <span id="productSku">{product.sku || product._id}</span></div>
+                <div><strong>Category:</strong> <span id="productCategory">{product.category}</span></div>
+                <div><strong>Tags:</strong> <span id="productTags">{product.tags?.join(', ') || 'N/A'}</span></div>
+                <div className="share-line">
+                  <strong>Share:</strong>
                   <a href="#" aria-label="Share on Facebook">f</a>
                   <a href="#" aria-label="Share on Pinterest">p</a>
                   <a href="#" aria-label="Share on Twitter">t</a>
@@ -99,6 +224,17 @@ export default function ProductPage({ params }: { params: { id: string } }) {
             </div>
           </div>
         </section>
+
+        {/* Divider line above product tabs */}
+        <div style={{
+          width: '100%',
+          height: '1px',
+          backgroundColor: '#E5E5E5',
+          margin: '40px 0',
+          maxWidth: '1200px',
+          marginLeft: 'auto',
+          marginRight: 'auto'
+        }}></div>
 
         <section className="product-tabs-section">
           <div className="product-tabs-container">
@@ -109,109 +245,88 @@ export default function ProductPage({ params }: { params: { id: string } }) {
             </div>
             <div className="tabs-content">
               <div className="tab-panel active" id="tab-description">
-                <p>Embodying the raw, wayward spirit of rock 'n' roll...</p>
-                <div className="tab-images"><img src="/image/Rectangle 24.png" alt="room 1" /><img src="/image/Rectangle 25.png" alt="room 2" /></div>
+                <p>{product.detailedDescription || product.description}</p>
+                {product.detailedImages && product.detailedImages.length > 0 && (
+                  <div className="tab-images" style={{
+                    marginTop: '20px',
+                    display: 'grid',
+                    gridTemplateColumns: product.detailedImages.length === 1 ? '1fr' : '1fr 1fr',
+                    gap: '20px'
+                  }}>
+                    {product.detailedImages.map((image, index) => (
+                      <img 
+                        key={index}
+                        src={image.startsWith('/uploads') ? `http://localhost:3002${image}` : image} 
+                        alt={`${product.name} detail ${index + 1}`}
+                        style={{
+                          width: '100%',
+                          height: '300px',
+                          objectFit: 'cover',
+                          objectPosition: 'center',
+                          borderRadius: '12px'
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
               </div>
-              <div className="tab-panel" id="tab-additional"><p>Materials: Solid wood frame, premium fabric cushions...</p></div>
-              <div className="tab-panel" id="tab-reviews"><p>No reviews yet. Be the first to write one!</p></div>
-            </div>
-          </div>
-        </section>
-
-        <section className="products-section">
-          <div className="products-container">
-            <h2 className="products-title">Related Products</h2>
-            <div className="products-grid" id="relatedProducts">
-              <div className="product-card">
-                <div className="product-image">
-                  <a href="/product/syltherine"><img src="/image/image 1.png" alt="Syltherine Chair" className="product-img" /></a>
-                  <div className="product-badge discount">-30%</div>
-                  <div className="product-overlay">
-                    <button className="add-to-cart-btn" data-id="syltherine">Add to cart</button>
-                    <div className="product-actions">
-                      <span className="action-item"><i className="icon">↗</i> Share</span>
-                      <span className="action-item"><i className="icon">⚖</i> Compare</span>
-                      <span className="action-item"><i className="icon">♡</i> Like</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="product-info">
-                  <h3 className="product-name"><a href="/product/syltherine">Syltherine</a></h3>
-                  <p className="product-description">Stylish cafe chair</p>
-                  <div className="product-price">
-                    <span className="current-price">$ 2.500.000</span>
-                    <span className="old-price">$ 3.500.000</span>
-                  </div>
+              <div className="tab-panel" id="tab-additional">
+                <div>
+                  {product.weight && <p><strong>Weight:</strong> {product.weight}kg</p>}
+                  {product.dimensions && <p><strong>Dimensions:</strong> {product.dimensions}</p>}
+                  {product.material && <p><strong>Material:</strong> {product.material}</p>}
+                  {product.color && <p><strong>Color:</strong> {product.color}</p>}
                 </div>
               </div>
-
-              <div className="product-card">
-                <div className="product-image">
-                  <a href="/product/leviosa"><img src="/image/image 2.png" alt="Leviosa Chair" className="product-img" /></a>
-                  <div className="product-overlay">
-                    <button className="add-to-cart-btn" data-id="leviosa">Add to cart</button>
-                    <div className="product-actions">
-                      <span className="action-item"><i className="icon">↗</i> Share</span>
-                      <span className="action-item"><i className="icon">⚖</i> Compare</span>
-                      <span className="action-item"><i className="icon">♡</i> Like</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="product-info">
-                  <h3 className="product-name"><a href="/product/leviosa">Leviosa</a></h3>
-                  <p className="product-description">Stylish cafe chair</p>
-                  <div className="product-price">
-                    <span className="current-price">$ 2.500.000</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="product-card">
-                <div className="product-image">
-                  <a href="/product/lolito"><img src="/image/image 3.png" alt="Lolito Sofa" className="product-img" /></a>
-                  <div className="product-badge discount">-50%</div>
-                  <div className="product-overlay">
-                    <button className="add-to-cart-btn" data-id="lolito">Add to cart</button>
-                    <div className="product-actions">
-                      <span className="action-item"><i className="icon">↗</i> Share</span>
-                      <span className="action-item"><i className="icon">⚖</i> Compare</span>
-                      <span className="action-item"><i className="icon">♡</i> Like</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="product-info">
-                  <h3 className="product-name"><a href="/product/lolito">Lolito</a></h3>
-                  <p className="product-description">Luxury big sofa</p>
-                  <div className="product-price">
-                    <span className="current-price">$ 7.000.000</span>
-                    <span className="old-price">$ 14.000.000</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="product-card">
-                <div className="product-image">
-                  <a href="/product/respira"><img src="/image/image 7.png" alt="Respira Table" className="product-img" /></a>
-                  <div className="product-overlay">
-                    <button className="add-to-cart-btn" data-id="respira">Add to cart</button>
-                    <div className="product-actions">
-                      <span className="action-item"><i className="icon">↗</i> Share</span>
-                      <span className="action-item"><i className="icon">⚖</i> Compare</span>
-                      <span className="action-item"><i className="icon">♡</i> Like</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="product-info">
-                  <h3 className="product-name"><a href="/product/respira">Respira</a></h3>
-                  <p className="product-description">Outdoor bar table and stool</p>
-                  <div className="product-price">
-                    <span className="current-price">$ 500.000</span>
-                  </div>
-                </div>
+              <div className="tab-panel" id="tab-reviews">
+                <p>No reviews yet. Be the first to write one!</p>
               </div>
             </div>
           </div>
         </section>
+
+        {/* Divider line between tabs and related products */}
+        <div style={{
+          width: '100%',
+          height: '1px',
+          backgroundColor: '#E5E5E5',
+          margin: '40px 0',
+          maxWidth: '1200px',
+          marginLeft: 'auto',
+          marginRight: 'auto'
+        }}></div>
+
+        {relatedProducts.length > 0 && (
+          <section className="products-section">
+            <div className="products-container">
+              <h2 className="products-title">Related Products</h2>
+              <div className="products-grid" id="relatedProducts">
+                {relatedProducts.map((relatedProduct) => (
+                  <RelatedProductCard key={relatedProduct._id} product={relatedProduct} />
+                ))}
+              </div>
+              <div className="show-more-container">
+                <button className="show-more-btn">Show More</button>
+              </div>
+            </div>
+          </section>
+        )}
+      </>
+    );
+  } catch (error) {
+    console.error('Error loading product:', error);
+    return notFound();
+  }
+}
+
+export default function ProductPage({ params }: ProductPageProps) {
+  return (
+    <>
+      <Header />
+      <main>
+        <Suspense fallback={<ProductDetailLoading />}>
+          <ProductDetail id={params.id} />
+        </Suspense>
       </main>
       <Footer />
       <Script src="/legacy/script.js" strategy="afterInteractive" />

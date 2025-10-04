@@ -50,7 +50,7 @@ import {
   TableHeader, 
   TableRow 
 } from "@/components/ui/table";
-import { Search, Plus, MoreHorizontal, Edit, Trash2, Eye, Package, ImagePlus, X } from "lucide-react";
+import { Search, Plus, MoreHorizontal, Edit, Eye, Package, ImagePlus, X, ChevronLeft, ChevronRight } from "lucide-react";
 
 // Product interface for display
 interface Product {
@@ -64,12 +64,14 @@ interface Product {
   sku: string;
   brand?: string;
   description: string;
+  detailedDescription?: string;
   weight?: number;
   dimensions?: string;
   material?: string;
   color?: string;
   tags?: string[];
   images?: string[];
+  detailedImages?: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -78,13 +80,19 @@ export default function Products() {
   const [searchQuery, setSearchQuery] = useState("");
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(20);
+  
+  // Filter states
+  const [statusFilter, setStatusFilter] = useState<'all' | 'Active' | 'Inactive' | 'Draft'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'Dining' | 'Living' | 'Bedroom'>('all');
 
   // Modal states
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
 
   // Fetch products from MongoDB
@@ -93,21 +101,46 @@ export default function Products() {
     isLoading, 
     error 
   } = useQuery({
-    queryKey: ['products', searchQuery],
+    queryKey: ['products', searchQuery, currentPage, itemsPerPage, statusFilter, categoryFilter],
     queryFn: () => productService.getProducts({ 
       search: searchQuery || undefined,
-      limit: 50 
+      page: currentPage,
+      limit: itemsPerPage,
+      status: statusFilter !== 'all' ? statusFilter : undefined,
+      category: categoryFilter !== 'all' ? categoryFilter : undefined
     }),
   });
 
   const products = productsResponse?.data || [];
+  const totalProducts = productsResponse?.pagination?.total || 0;
+  const totalPages = productsResponse?.pagination?.pages || 1;
+  
+  // Reset page when search or filter changes
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+    setCurrentPage(1);
+  };
+  
+  const handleStatusFilterChange = (value: 'all' | 'Active' | 'Inactive' | 'Draft') => {
+    setStatusFilter(value);
+    setCurrentPage(1);
+  };
+  
+  const handleCategoryFilterChange = (value: 'all' | 'Dining' | 'Living' | 'Bedroom') => {
+    setCategoryFilter(value);
+    setCurrentPage(1);
+  };
 
   // Add Product sheet/modal state
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [selectedDetailedImages, setSelectedDetailedImages] = useState<File[]>([]);
   const [editSelectedImages, setEditSelectedImages] = useState<File[]>([]);
+  const [editSelectedDetailedImages, setEditSelectedDetailedImages] = useState<File[]>([]);
   const imagePreviews = useMemo(() => selectedImages.map((f) => URL.createObjectURL(f)), [selectedImages]);
+  const detailedImagePreviews = useMemo(() => selectedDetailedImages.map((f) => URL.createObjectURL(f)), [selectedDetailedImages]);
   const editImagePreviews = useMemo(() => editSelectedImages.map((f) => URL.createObjectURL(f)), [editSelectedImages]);
+  const editDetailedImagePreviews = useMemo(() => editSelectedDetailedImages.map((f) => URL.createObjectURL(f)), [editSelectedDetailedImages]);
 
   const addProductSchema = z.object({
     name: z.string().min(2, "Name is too short"),
@@ -140,6 +173,8 @@ export default function Products() {
     color: z.string().optional(),
     tags: z.string().optional(),
     images: z.array(z.string()).optional(),
+    detailedDescription: z.string().optional(),
+    detailedImages: z.array(z.string()).optional(),
   });
 
   type AddProductForm = z.infer<typeof addProductSchema>;
@@ -168,6 +203,8 @@ export default function Products() {
       color: "",
       tags: "",
       images: [],
+      detailedDescription: "",
+      detailedImages: [],
     },
   });
 
@@ -213,14 +250,14 @@ export default function Products() {
     
     // Check if we would exceed the limit
     const totalFiles = selectedImages.length + validFiles.length;
-    const finalFiles = [...selectedImages, ...validFiles].slice(0, 6);
+    const finalFiles = [...selectedImages, ...validFiles].slice(0, 5);
     
     console.log('🔍 Image Upload Debug:', {
       currentImages: selectedImages.length,
       newValidFiles: validFiles.length,
       totalFiles,
       finalFilesCount: finalFiles.length,
-      maxAllowed: 6
+      maxAllowed: 5
     });
     
     setSelectedImages(finalFiles);
@@ -233,11 +270,11 @@ export default function Products() {
       });
     }
     
-    if (totalFiles > 6) {
-      const skippedCount = totalFiles - 6;
+    if (totalFiles > 5) {
+      const skippedCount = totalFiles - 5;
       toast({
         title: "Maximum images reached",
-        description: `You can only upload up to 6 images per product. ${skippedCount} file(s) were not added.`,
+        description: `You can only upload up to 5 images per product. ${skippedCount} file(s) were not added.`,
         variant: "destructive",
       });
     }
@@ -245,6 +282,63 @@ export default function Products() {
 
   const removeImageAt = (idx: number) => {
     setSelectedImages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleSelectDetailedImages = (files: FileList | null) => {
+    if (!files) return;
+    
+    const newFiles = Array.from(files);
+    const validFiles: File[] = [];
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    
+    newFiles.forEach((file) => {
+      if (file.size > maxSize) {
+        toast({
+          title: "File too large",
+          description: `${file.name} is larger than 5MB. Please choose a smaller file.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: `${file.name} is not an image file.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      validFiles.push(file);
+    });
+    
+    // Check if we would exceed the limit (max 2 detailed images)
+    const totalFiles = selectedDetailedImages.length + validFiles.length;
+    const finalFiles = [...selectedDetailedImages, ...validFiles].slice(0, 2);
+    
+    setSelectedDetailedImages(finalFiles);
+    
+    if (validFiles.length !== newFiles.length) {
+      toast({
+        title: "Some files were skipped",
+        description: "Only valid image files under 5MB were added.",
+        variant: "destructive",
+      });
+    }
+    
+    if (totalFiles > 2) {
+      const skippedCount = totalFiles - 2;
+      toast({
+        title: "Maximum detailed images reached",
+        description: `You can only upload up to 2 detailed images per product. ${skippedCount} file(s) were not added.`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const removeDetailedImageAt = (idx: number) => {
+    setSelectedDetailedImages((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const handleEditSelectImages = (files: FileList | null) => {
@@ -282,7 +376,7 @@ export default function Products() {
     const totalAfterAdding = currentImagesCount + existingNewImagesCount + validFiles.length;
     
     // Calculate how many new images we can actually add
-    const maxNewImages = Math.max(0, 6 - currentImagesCount - existingNewImagesCount);
+    const maxNewImages = Math.max(0, 5 - currentImagesCount - existingNewImagesCount);
     const finalFiles = [...editSelectedImages, ...validFiles.slice(0, maxNewImages)];
     
     setEditSelectedImages(finalFiles);
@@ -295,11 +389,11 @@ export default function Products() {
       });
     }
     
-    if (totalAfterAdding > 6) {
-      const skippedCount = totalAfterAdding - 6;
+    if (totalAfterAdding > 5) {
+      const skippedCount = totalAfterAdding - 5;
       toast({
         title: "Maximum total images reached",
-        description: `You can only have 6 images total per product. ${skippedCount} file(s) were not added. Current: ${currentImagesCount}, New: ${finalFiles.length}`,
+        description: `You can only have 5 images total per product. ${skippedCount} file(s) were not added. Current: ${currentImagesCount}, New: ${finalFiles.length}`,
         variant: "destructive",
       });
     }
@@ -307,6 +401,68 @@ export default function Products() {
 
   const removeEditImageAt = (idx: number) => {
     setEditSelectedImages((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const handleEditSelectDetailedImages = (files: FileList | null) => {
+    if (!files) return;
+    
+    const newFiles = Array.from(files);
+    const validFiles: File[] = [];
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    
+    newFiles.forEach((file) => {
+      if (file.size > maxSize) {
+        toast({
+          title: "File too large",
+          description: `${file.name} is larger than 5MB. Please choose a smaller file.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      if (!file.type.startsWith('image/')) {
+        toast({
+          title: "Invalid file type",
+          description: `${file.name} is not an image file.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      validFiles.push(file);
+    });
+    
+    // Check total detailed images limit (current + existing new + new files)
+    const currentDetailedImagesCount = selectedProduct?.detailedImages?.length || 0;
+    const existingNewDetailedImagesCount = editSelectedDetailedImages.length;
+    const totalAfterAdding = currentDetailedImagesCount + existingNewDetailedImagesCount + validFiles.length;
+    
+    // Calculate how many new detailed images we can actually add
+    const maxNewDetailedImages = Math.max(0, 2 - currentDetailedImagesCount - existingNewDetailedImagesCount);
+    const finalFiles = [...editSelectedDetailedImages, ...validFiles.slice(0, maxNewDetailedImages)];
+    
+    setEditSelectedDetailedImages(finalFiles);
+    
+    if (validFiles.length !== newFiles.length) {
+      toast({
+        title: "Some files were skipped",
+        description: "Only valid image files under 5MB were added.",
+        variant: "destructive",
+      });
+    }
+    
+    if (totalAfterAdding > 2) {
+      const skippedCount = totalAfterAdding - 2;
+      toast({
+        title: "Maximum detailed images reached",
+        description: `You can only have 2 detailed images total per product. ${skippedCount} file(s) were not added. Current: ${currentDetailedImagesCount}, New: ${finalFiles.length}`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const removeEditDetailedImageAt = (idx: number) => {
+    setEditSelectedDetailedImages((prev) => prev.filter((_, i) => i !== idx));
   };
 
   // Create product mutation
@@ -325,6 +481,7 @@ export default function Products() {
         // Reset form and close
         reset();
         setSelectedImages([]);
+        setSelectedDetailedImages([]);
         setIsAddOpen(false);
       } else {
         toast({
@@ -346,8 +503,9 @@ export default function Products() {
   const onSubmit = async (values: AddProductForm) => {
     try {
       let imageUrls: string[] = [];
+      let detailedImageUrls: string[] = [];
       
-      // Upload images if any were selected
+      // Upload main images if any were selected
       if (selectedImages.length > 0) {
         setIsUploadingImages(true);
         
@@ -367,15 +525,47 @@ export default function Products() {
           imageUrls = uploadResult.data;
           toast({
             title: "Images uploaded",
-            description: `Successfully uploaded ${imageUrls.length} images`,
+            description: `Successfully uploaded ${imageUrls.length} main images`,
           });
         } else {
           toast({
             title: "Image upload failed",
-            description: uploadResult.error || "Failed to upload images",
+            description: uploadResult.error || "Failed to upload main images",
             variant: "destructive",
           });
           return; // Don't proceed if image upload fails
+        }
+      }
+      
+      // Upload detailed images if any were selected
+      if (selectedDetailedImages.length > 0) {
+        setIsUploadingImages(true);
+        
+        const detailedUploadFormData = new FormData();
+        selectedDetailedImages.forEach((file) => {
+          detailedUploadFormData.append('files', file);
+        });
+        
+        const detailedUploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          body: detailedUploadFormData,
+        });
+        
+        const detailedUploadResult = await detailedUploadResponse.json();
+        
+        if (detailedUploadResult.success) {
+          detailedImageUrls = detailedUploadResult.data;
+          toast({
+            title: "Detailed images uploaded",
+            description: `Successfully uploaded ${detailedImageUrls.length} detailed images`,
+          });
+        } else {
+          toast({
+            title: "Detailed image upload failed",
+            description: detailedUploadResult.error || "Failed to upload detailed images",
+            variant: "destructive",
+          });
+          return; // Don't proceed if detailed image upload fails
         }
       }
       
@@ -383,10 +573,99 @@ export default function Products() {
       const formData = {
         ...values,
         oldPrice: values.oldPrice ? parseFloat(values.oldPrice) : undefined,
-        images: imageUrls
+        images: imageUrls,
+        detailedImages: detailedImageUrls
       };
       
       createProductMutation.mutate(formData);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to upload images",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploadingImages(false);
+    }
+  };
+
+  const onEditSubmit = async (values: AddProductForm) => {
+    if (!selectedProduct) return;
+    
+    try {
+      let newImageUrls: string[] = [];
+      let newDetailedImageUrls: string[] = [];
+      
+      // Upload new main images if any were selected
+      if (editSelectedImages.length > 0) {
+        setIsUploadingImages(true);
+        
+        const uploadFormData = new FormData();
+        editSelectedImages.forEach((file) => {
+          uploadFormData.append('files', file);
+        });
+        
+        const uploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          body: uploadFormData,
+        });
+        
+        const uploadResult = await uploadResponse.json();
+        
+        if (uploadResult.success) {
+          newImageUrls = uploadResult.data;
+        } else {
+          toast({
+            title: "Image upload failed",
+            description: uploadResult.error || "Failed to upload new images",
+            variant: "destructive",
+          });
+          return; // Don't proceed if image upload fails
+        }
+      }
+      
+      // Upload new detailed images if any were selected
+      if (editSelectedDetailedImages.length > 0) {
+        setIsUploadingImages(true);
+        
+        const detailedUploadFormData = new FormData();
+        editSelectedDetailedImages.forEach((file) => {
+          detailedUploadFormData.append('files', file);
+        });
+        
+        const detailedUploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          body: detailedUploadFormData,
+        });
+        
+        const detailedUploadResult = await detailedUploadResponse.json();
+        
+        if (detailedUploadResult.success) {
+          newDetailedImageUrls = detailedUploadResult.data;
+        } else {
+          toast({
+            title: "Detailed image upload failed",
+            description: detailedUploadResult.error || "Failed to upload new detailed images",
+            variant: "destructive",
+          });
+          return; // Don't proceed if detailed image upload fails
+        }
+      }
+      
+      // Use current images from selectedProduct (which may have been modified by delete actions)
+      const currentImages = selectedProduct.images || [];
+      const currentDetailedImages = selectedProduct.detailedImages || [];
+      const formData = {
+        ...values,
+        oldPrice: values.oldPrice ? parseFloat(values.oldPrice) : undefined,
+        images: [...currentImages, ...newImageUrls],
+        detailedImages: [...currentDetailedImages, ...newDetailedImageUrls]
+      };
+      
+      updateProductMutation.mutate({ 
+        id: selectedProduct._id, 
+        data: formData 
+      });
     } catch (error) {
       toast({
         title: "Error",
@@ -415,6 +694,7 @@ export default function Products() {
         // Reset form and close
         editReset();
         setEditSelectedImages([]);
+        setEditSelectedDetailedImages([]);
         setIsEditOpen(false);
         setSelectedProduct(null);
       } else {
@@ -434,91 +714,6 @@ export default function Products() {
     },
   });
 
-  // Delete product mutation
-  const deleteProductMutation = useMutation({
-    mutationFn: (id: string) => productService.deleteProduct(id),
-    onSuccess: (response) => {
-      if (response.success) {
-        toast({
-          title: "Product deleted",
-          description: "Product has been successfully deleted.",
-        });
-        
-        // Refresh products list
-        queryClient.invalidateQueries({ queryKey: ['products'] });
-        
-        // Close dialog
-        setDeleteDialogOpen(false);
-        setProductToDelete(null);
-      } else {
-        toast({
-          title: "Error",
-          description: response.error || "Failed to delete product",
-          variant: "destructive",
-        });
-      }
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: "Failed to delete product",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const onEditSubmit = async (values: AddProductForm) => {
-    if (!selectedProduct) return;
-    
-    try {
-      let newImageUrls: string[] = [];
-      
-      // Upload new images if any were selected
-      if (editSelectedImages.length > 0) {
-        const uploadFormData = new FormData();
-        editSelectedImages.forEach((file) => {
-          uploadFormData.append('files', file);
-        });
-        
-        const uploadResponse = await fetch('/api/upload', {
-          method: 'POST',
-          body: uploadFormData,
-        });
-        
-        const uploadResult = await uploadResponse.json();
-        
-        if (uploadResult.success) {
-          newImageUrls = uploadResult.data;
-        } else {
-          toast({
-            title: "Image upload failed",
-            description: uploadResult.error || "Failed to upload new images",
-            variant: "destructive",
-          });
-          return; // Don't proceed if image upload fails
-        }
-      }
-      
-      // Use current images from selectedProduct (which may have been modified by delete actions)
-      const currentImages = selectedProduct.images || [];
-      const formData = {
-        ...values,
-        oldPrice: values.oldPrice ? parseFloat(values.oldPrice) : undefined,
-        images: [...currentImages, ...newImageUrls]
-      };
-      
-      updateProductMutation.mutate({ 
-        id: selectedProduct._id, 
-        data: formData 
-      });
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to upload images",
-        variant: "destructive",
-      });
-    }
-  };
 
   // Event handlers
   const handleViewDetails = async (productId: string) => {
@@ -557,6 +752,7 @@ export default function Products() {
           category: product.category as "Dining" | "Living" | "Bedroom",
           brand: product.brand || "",
           description: product.description,
+          detailedDescription: product.detailedDescription || "",
           price: product.price.toString(),
           oldPrice: product.oldPrice?.toString() || "",
           stock: product.stock.toString(),
@@ -567,9 +763,11 @@ export default function Products() {
           color: product.color || "",
           tags: product.tags?.join(", ") || "",
           images: product.images || [],
+          detailedImages: product.detailedImages || [],
         });
         
         setEditSelectedImages([]);
+        setEditSelectedDetailedImages([]);
         setIsEditOpen(true);
       } else {
         toast({
@@ -587,16 +785,6 @@ export default function Products() {
     }
   };
 
-  const handleDeleteProduct = (product: Product) => {
-    setProductToDelete(product);
-    setDeleteDialogOpen(true);
-  };
-
-  const confirmDelete = () => {
-    if (productToDelete) {
-      deleteProductMutation.mutate(productToDelete._id);
-    }
-  };
 
   // Products are already filtered by the API call, so we use them directly
   const filteredProducts = products;
@@ -672,7 +860,7 @@ export default function Products() {
           <SheetHeader>
             <SheetTitle className="text-furniro-brown">Add New Product</SheetTitle>
             <SheetDescription>
-              Enter product details. Upload up to 6 images that showcase the furniture.
+              Enter product details. Upload up to 5 images that showcase the furniture.
             </SheetDescription>
           </SheetHeader>
 
@@ -886,7 +1074,7 @@ export default function Products() {
                       Upload Product Images
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Upload up to 6 images. PNG, JPG recommended. Max 5MB per image.
+                      Upload up to 5 images. PNG, JPG recommended. Max 5MB per image.
                     </p>
                   </div>
                   
@@ -908,7 +1096,7 @@ export default function Products() {
                   <div className="mt-6">
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-sm font-medium text-furniro-brown">
-                        Selected Images ({selectedImages.length}/6)
+                        Selected Images ({selectedImages.length}/5)
                       </p>
                       <button
                         type="button"
@@ -957,6 +1145,112 @@ export default function Products() {
               </div>
             </div>
 
+            {/* Detailed Description Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-furniro-brown border-b pb-2">Detailed Description</h3>
+              
+              <div className="space-y-2">
+                <Label htmlFor="detailedDescription">Detailed Description</Label>
+                <textarea 
+                  id="detailedDescription"
+                  placeholder="Provide detailed information about the product, including features, specifications, care instructions, etc..."
+                  className="w-full min-h-[120px] px-3 py-2 border border-input bg-background rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  {...register("detailedDescription")}
+                />
+                {errors.detailedDescription && (
+                  <p className="text-sm text-red-600">{errors.detailedDescription.message}</p>
+                )}
+                <p className="text-xs text-muted-foreground">Optional. Provide comprehensive product details for customers.</p>
+              </div>
+            </div>
+
+            {/* Detailed Product Images Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-furniro-brown border-b pb-2">Detailed Product Images</h3>
+              
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-furniro-brown">Upload Detailed Images (up to 2)</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      High-resolution images showing product details, textures, or close-ups. Max 5MB each.
+                    </p>
+                  </div>
+                  <label
+                    htmlFor="detailedImages"
+                    className={`inline-flex items-center px-4 py-2 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                      selectedDetailedImages.length >= 2
+                        ? 'border-gray-300 bg-gray-50 text-gray-400 cursor-not-allowed'
+                        : 'border-furniro-brown/30 hover:border-furniro-brown bg-furniro-brown/5 hover:bg-furniro-brown/10 text-furniro-brown'
+                    }`}
+                  >
+                    <ImagePlus className="h-4 w-4 mr-2" />
+                    {selectedDetailedImages.length >= 2 ? 'Maximum Reached' : 'Choose Files'}
+                  </label>
+                  <input
+                    id="detailedImages"
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    disabled={selectedDetailedImages.length >= 2}
+                    onChange={(e) => handleSelectDetailedImages(e.target.files)}
+                  />
+                </div>
+
+                {selectedDetailedImages.length > 0 && (
+                  <div className="mt-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-medium text-furniro-brown">
+                        Selected Detailed Images ({selectedDetailedImages.length}/2)
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDetailedImages([])}
+                        className="text-xs text-muted-foreground hover:text-destructive"
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {detailedImagePreviews.map((src, idx) => (
+                        <div key={src} className="relative group rounded-lg overflow-hidden bg-white shadow-soft border">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={src} alt={`Detailed Preview ${idx + 1}`} className="h-40 w-full object-cover" />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                          
+                          {/* Image Number Badge */}
+                          <div className="absolute top-2 left-2 bg-blue-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                            {idx + 1}
+                          </div>
+                          
+                          <button
+                            type="button"
+                            onClick={() => removeDetailedImageAt(idx)}
+                            className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 shadow hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity"
+                            aria-label="Remove detailed image"
+                          >
+                            <X className="h-4 w-4 text-destructive" />
+                          </button>
+                          <div className="absolute bottom-2 left-2 right-2">
+                            <div className="bg-white/90 rounded px-2 py-1">
+                              <p className="text-xs font-medium text-blue-600 truncate">
+                                Detailed {idx + 1}: {selectedDetailedImages[idx]?.name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {(selectedDetailedImages[idx]?.size / 1024 / 1024).toFixed(1)} MB
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Form Actions */}
             <div className="flex items-center justify-between pt-6 border-t">
               <div className="text-xs text-muted-foreground">
@@ -970,6 +1264,7 @@ export default function Products() {
                     setIsAddOpen(false);
                     reset();
                     setSelectedImages([]);
+                    setSelectedDetailedImages([]);
                   }}
                   disabled={isSubmitting}
                 >
@@ -1286,8 +1581,8 @@ export default function Products() {
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {selectedProduct && selectedProduct.images ? 
-                        `Add more images (max ${6 - selectedProduct.images.length} more). Total limit: 6 images per product.` :
-                        'Upload up to 6 images. PNG, JPG recommended. Max 5MB per image.'
+                        `Add more images (max ${5 - selectedProduct.images.length} more). Total limit: 5 images per product.` :
+                        'Upload up to 5 images. PNG, JPG recommended. Max 5MB per image.'
                       }
                     </p>
                   </div>
@@ -1296,7 +1591,7 @@ export default function Products() {
                     const currentCount = selectedProduct?.images?.length || 0;
                     const newCount = editSelectedImages.length;
                     const totalCount = currentCount + newCount;
-                    const canAddMore = totalCount < 6;
+                    const canAddMore = totalCount < 5;
                     
                     return (
                       <>
@@ -1309,7 +1604,7 @@ export default function Products() {
                           }`}
                         >
                           <ImagePlus className="h-4 w-4 mr-2" />
-                          {canAddMore ? 'Choose Files' : 'Limit Reached (6/6)'}
+                          {canAddMore ? 'Choose Files' : 'Limit Reached (5/5)'}
                         </label>
                         <input
                           id="edit-images"
@@ -1329,10 +1624,10 @@ export default function Products() {
                   <div className="mt-6">
                     <div className="flex items-center justify-between mb-3">
                       <p className="text-sm font-medium text-furniro-brown">
-                        New Images ({editSelectedImages.length}/{Math.max(0, 6 - (selectedProduct?.images?.length || 0))})
+                        New Images ({editSelectedImages.length}/{Math.max(0, 5 - (selectedProduct?.images?.length || 0))})
                         {selectedProduct && selectedProduct.images && selectedProduct.images.length > 0 && (
                           <span className="text-xs text-muted-foreground ml-2">
-                            (Total: {selectedProduct.images.length + editSelectedImages.length}/6)
+                            (Total: {selectedProduct.images.length + editSelectedImages.length}/5)
                           </span>
                         )}
                       </p>
@@ -1382,6 +1677,183 @@ export default function Products() {
               </div>
             </div>
 
+            {/* Detailed Description Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-furniro-brown border-b pb-2">Detailed Description</h3>
+              
+              <div className="space-y-2">
+                <Label htmlFor="edit-detailedDescription">Detailed Description</Label>
+                <textarea 
+                  id="edit-detailedDescription"
+                  placeholder="Provide detailed information about the product, including features, specifications, care instructions, etc..."
+                  className="w-full min-h-[120px] px-3 py-2 border border-input bg-background rounded-md text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  {...editRegister("detailedDescription")}
+                />
+                {editErrors.detailedDescription && (
+                  <p className="text-sm text-red-600">{editErrors.detailedDescription.message}</p>
+                )}
+                <p className="text-xs text-muted-foreground">Optional. Provide comprehensive product details for customers.</p>
+              </div>
+            </div>
+
+            {/* Detailed Product Images Section */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-furniro-brown border-b pb-2">Detailed Product Images</h3>
+              
+              <div className="space-y-4">
+                {/* Current Detailed Images */}
+                {selectedProduct && selectedProduct.detailedImages && selectedProduct.detailedImages.length > 0 && (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-medium text-furniro-brown">
+                        Current Detailed Images ({selectedProduct.detailedImages.length}/2)
+                      </p>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {selectedProduct.detailedImages.map((imageUrl, idx) => (
+                        <div key={imageUrl} className="relative group rounded-lg overflow-hidden bg-white shadow-soft border">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={imageUrl} alt={`Current Detailed ${idx + 1}`} className="h-40 w-full object-cover" />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                          
+                          {/* Green Badge for Current Images */}
+                          <div className="absolute top-2 left-2 bg-green-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                            {idx + 1}
+                          </div>
+                          
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Remove from selectedProduct.detailedImages
+                              if (selectedProduct) {
+                                const updatedDetailedImages = selectedProduct.detailedImages?.filter((_, i) => i !== idx) || [];
+                                setSelectedProduct({
+                                  ...selectedProduct,
+                                  detailedImages: updatedDetailedImages
+                                });
+                              }
+                            }}
+                            className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 shadow hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity"
+                            aria-label="Remove current detailed image"
+                          >
+                            <X className="h-4 w-4 text-destructive" />
+                          </button>
+                          <div className="absolute bottom-2 left-2 right-2">
+                            <div className="bg-white/90 rounded px-2 py-1">
+                              <p className="text-xs font-medium text-green-600 truncate">
+                                Current Detailed {idx + 1}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-furniro-brown">Upload New Detailed Images</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {selectedProduct && selectedProduct.detailedImages ? 
+                        `Add more detailed images (max ${2 - selectedProduct.detailedImages.length} more). Total limit: 2 detailed images per product.` :
+                        'Upload up to 2 detailed images. PNG, JPG recommended. Max 5MB per image.'
+                      }
+                    </p>
+                  </div>
+                  
+                  {(() => {
+                    const currentCount = selectedProduct?.detailedImages?.length || 0;
+                    const newCount = editSelectedDetailedImages.length;
+                    const totalCount = currentCount + newCount;
+                    const canAddMore = totalCount < 2;
+                    
+                    return (
+                      <>
+                        <label 
+                          htmlFor="edit-detailed-images" 
+                          className={`inline-flex items-center px-4 py-2 mt-4 rounded-md transition-opacity ${
+                            canAddMore 
+                              ? 'bg-blue-600 text-white cursor-pointer hover:opacity-90' 
+                              : 'bg-muted text-muted-foreground cursor-not-allowed'
+                          }`}
+                        >
+                          <ImagePlus className="h-4 w-4 mr-2" />
+                          {canAddMore ? 'Choose Files' : 'Limit Reached (2/2)'}
+                        </label>
+                        <input
+                          id="edit-detailed-images"
+                          type="file"
+                          accept="image/*"
+                          multiple
+                          className="hidden"
+                          disabled={!canAddMore}
+                          onChange={(e) => handleEditSelectDetailedImages(e.target.files)}
+                        />
+                      </>
+                    );
+                  })()}
+                </div>
+
+                {editSelectedDetailedImages.length > 0 && (
+                  <div className="mt-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <p className="text-sm font-medium text-furniro-brown">
+                        New Detailed Images ({editSelectedDetailedImages.length}/{Math.max(0, 2 - (selectedProduct?.detailedImages?.length || 0))})
+                        {selectedProduct && selectedProduct.detailedImages && selectedProduct.detailedImages.length > 0 && (
+                          <span className="text-xs text-muted-foreground ml-2">
+                            (Total: {selectedProduct.detailedImages.length + editSelectedDetailedImages.length}/2)
+                          </span>
+                        )}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => setEditSelectedDetailedImages([])}
+                        className="text-xs text-muted-foreground hover:text-destructive"
+                      >
+                        Clear All
+                      </button>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {editDetailedImagePreviews.map((src, idx) => (
+                        <div key={src} className="relative group rounded-lg overflow-hidden bg-white shadow-soft border">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={src} alt={`New Detailed Preview ${idx + 1}`} className="h-40 w-full object-cover" />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                          
+                          {/* Blue Badge for New Images */}
+                          <div className="absolute top-2 left-2 bg-blue-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                            {(selectedProduct?.detailedImages?.length || 0) + idx + 1}
+                          </div>
+                          
+                          <button
+                            type="button"
+                            onClick={() => removeEditDetailedImageAt(idx)}
+                            className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 shadow hover:bg-white opacity-0 group-hover:opacity-100 transition-opacity"
+                            aria-label="Remove new detailed image"
+                          >
+                            <X className="h-4 w-4 text-destructive" />
+                          </button>
+                          <div className="absolute bottom-2 left-2 right-2">
+                            <div className="bg-white/90 rounded px-2 py-1">
+                              <p className="text-xs font-medium text-blue-600 truncate">
+                                New Detailed {idx + 1}: {editSelectedDetailedImages[idx]?.name}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {(editSelectedDetailedImages[idx]?.size / 1024 / 1024).toFixed(1)} MB
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
             {/* Form Actions */}
             <div className="flex items-center justify-between pt-6 border-t">
               <div className="text-xs text-muted-foreground">
@@ -1395,6 +1867,7 @@ export default function Products() {
                     setIsEditOpen(false);
                     editReset();
                     setEditSelectedImages([]);
+                    setEditSelectedDetailedImages([]);
                     setSelectedProduct(null);
                   }}
                   disabled={editIsSubmitting}
@@ -1433,22 +1906,52 @@ export default function Products() {
               <Input
                 placeholder="Search products by name, category, or SKU..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-9"
               />
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline">Category</Button>
+                <Button variant="outline">
+                  Category {categoryFilter !== 'all' && `(${categoryFilter})`}
+                </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
-                <DropdownMenuItem>All Categories</DropdownMenuItem>
-                <DropdownMenuItem>Dining</DropdownMenuItem>
-                <DropdownMenuItem>Living</DropdownMenuItem>
-                <DropdownMenuItem>Bedroom</DropdownMenuItem>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleCategoryFilterChange('all')}>
+                  All Categories
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleCategoryFilterChange('Dining')}>
+                  Dining
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleCategoryFilterChange('Living')}>
+                  Living
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleCategoryFilterChange('Bedroom')}>
+                  Bedroom
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="outline">Status</Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  Status {statusFilter !== 'all' && `(${statusFilter})`}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleStatusFilterChange('all')}>
+                  All Status
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange('Active')}>
+                  Active
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange('Inactive')}>
+                  Inactive
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleStatusFilterChange('Draft')}>
+                  Draft
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button variant="outline">Export</Button>
           </div>
         </CardContent>
@@ -1457,12 +1960,30 @@ export default function Products() {
       {/* Products Table */}
       <Card className="shadow-soft">
         <CardHeader>
-          <CardTitle>Product Inventory ({filteredProducts.length})</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>Product Inventory</span>
+            <div className="flex items-center space-x-2">
+              <Badge variant="secondary" className="text-sm">
+                {totalProducts} {totalProducts === 1 ? 'product' : 'products'}
+              </Badge>
+              {statusFilter !== 'all' && (
+                <Badge variant="outline" className="text-xs">
+                  {statusFilter} only
+                </Badge>
+              )}
+              {categoryFilter !== 'all' && (
+                <Badge variant="outline" className="text-xs">
+                  {categoryFilter} only
+                </Badge>
+              )}
+            </div>
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="text-center w-[60px]">#</TableHead>
                 <TableHead>Product</TableHead>
                 <TableHead>SKU</TableHead>
                 <TableHead>Category</TableHead>
@@ -1473,8 +1994,13 @@ export default function Products() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredProducts.map((product) => (
+              {filteredProducts.map((product, index) => (
                 <TableRow key={product._id} className="hover:bg-muted/30">
+                  <TableCell className="text-center">
+                    <div className="text-sm font-medium text-gray-600">
+                      {((currentPage - 1) * itemsPerPage) + index + 1}
+                    </div>
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center space-x-3">
                       <div className="h-12 w-12 bg-gradient-beige rounded-lg overflow-hidden flex items-center justify-center">
@@ -1537,13 +2063,6 @@ export default function Products() {
                           <Edit className="h-4 w-4 mr-2" />
                           Edit Product
                         </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          className="text-destructive"
-                          onClick={() => handleDeleteProduct(product)}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete Product
-                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -1551,6 +2070,65 @@ export default function Products() {
               ))}
             </TableBody>
           </Table>
+          
+          {/* Pagination */}
+          {!isLoading && (
+            <div className="flex items-center justify-between px-2 py-4">
+              <div className="text-sm text-gray-700">
+                Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, totalProducts)} of {totalProducts} products
+              </div>
+              {totalPages > 1 && (
+                <div className="flex items-center space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  
+                  <div className="flex items-center space-x-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      let pageNum;
+                      if (totalPages <= 5) {
+                        pageNum = i + 1;
+                      } else if (currentPage <= 3) {
+                        pageNum = i + 1;
+                      } else if (currentPage >= totalPages - 2) {
+                        pageNum = totalPages - 4 + i;
+                      } else {
+                        pageNum = currentPage - 2 + i;
+                      }
+                      
+                      return (
+                        <Button
+                          key={pageNum}
+                          variant={currentPage === pageNum ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentPage(pageNum)}
+                          className="w-8 h-8 p-0"
+                        >
+                          {pageNum}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -1630,6 +2208,16 @@ export default function Products() {
                   {selectedProduct.description}
                 </p>
               </div>
+
+              {/* Detailed Description */}
+              {selectedProduct.detailedDescription && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-muted-foreground">Detailed Description</Label>
+                  <p className="text-sm leading-relaxed bg-blue-50 p-3 rounded-md border border-blue-200">
+                    {selectedProduct.detailedDescription}
+                  </p>
+                </div>
+              )}
 
               {/* Product Details */}
               {(selectedProduct.weight || selectedProduct.dimensions || selectedProduct.material || selectedProduct.color) && (
@@ -1711,6 +2299,39 @@ export default function Products() {
                 </div>
               )}
 
+              {/* Detailed Images */}
+              {selectedProduct.detailedImages && selectedProduct.detailedImages.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-muted-foreground">Detailed Images ({selectedProduct.detailedImages.length})</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {selectedProduct.detailedImages.map((image, index) => (
+                      <div key={index} className="relative rounded-lg overflow-hidden bg-blue-50 border border-blue-200">
+                        <img 
+                          src={image} 
+                          alt={`${selectedProduct.name} detailed ${index + 1}`}
+                          className="w-full h-40 object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/image/placeholder.png';
+                          }}
+                        />
+                        {/* Blue Badge for Detailed Images */}
+                        <div className="absolute top-2 left-2 bg-blue-600 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center">
+                          {index + 1}
+                        </div>
+                        {/* Image Info */}
+                        <div className="absolute bottom-2 left-2 right-2">
+                          <div className="bg-white/90 rounded px-2 py-1">
+                            <p className="text-xs font-medium text-blue-600">
+                              Detailed {index + 1}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Timestamps */}
               <div className="space-y-4">
                 <h3 className="text-lg font-semibold text-furniro-brown border-b pb-2">Timestamps</h3>
@@ -1730,34 +2351,6 @@ export default function Products() {
         </SheetContent>
       </Sheet>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Product</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete "{productToDelete?.name}"? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={confirmDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              disabled={deleteProductMutation.isPending}
-            >
-              {deleteProductMutation.isPending ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
-                  Deleting...
-                </>
-              ) : (
-                "Delete Product"
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

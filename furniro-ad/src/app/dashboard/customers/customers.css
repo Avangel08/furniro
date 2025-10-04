@@ -1,0 +1,77 @@
+/* Custom styles for Customer Management */
+
+.customer-table {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.customer-avatar {
+  transition: transform 0.2s ease-in-out;
+}
+
+.customer-avatar:hover {
+  transform: scale(1.05);
+}
+
+.customer-row {
+  transition: all 0.2s ease-in-out;
+}
+
+.customer-row:hover {
+  background-color: #f9fafb;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.status-badge {
+  font-weight: 500;
+  letter-spacing: 0.025em;
+}
+
+.orders-badge {
+  font-weight: 500;
+  letter-spacing: 0.025em;
+}
+
+.action-button {
+  transition: all 0.2s ease-in-out;
+}
+
+.action-button:hover {
+  background-color: #f3f4f6;
+  transform: scale(1.1);
+}
+
+/* Custom scrollbar for table */
+.customer-table::-webkit-scrollbar {
+  height: 6px;
+}
+
+.customer-table::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 3px;
+}
+
+.customer-table::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+.customer-table::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .customer-table {
+    font-size: 0.875rem;
+  }
+  
+  .customer-avatar {
+    width: 2rem;
+    height: 2rem;
+  }
+  
+  .customer-avatar span {
+    font-size: 0.75rem;
+  }
+}

@@ -325,7 +325,7 @@ body.has-fixed-header {
     width: 50px;
     height: 50px;
     border-radius: 50%;
-    background-color: rgba(255, 255, 255, 0.9);
+    background-color: transparent;
     border: none;
     cursor: pointer;
     display: flex;
@@ -355,7 +355,7 @@ body.has-fixed-header {
 .hero-carousel-next svg {
     width: 24px;
     height: 24px;
-    color: #333;
+    color: white;
     transition: color 0.3s ease;
 }
 
@@ -438,7 +438,7 @@ body.has-fixed-header {
 
 /* Kiểu Phần Sản Phẩm Của Chúng Tôi */
 .products-section {
-    padding: 80px 0;
+    padding: 20px 0;
     background-color: white;
 }
 
@@ -1563,12 +1563,12 @@ body.has-fixed-header {
 .share-line a { margin-left: 10px; color: #333; text-decoration: none; }
 
 /* Tab */
-.product-tabs-section { padding: 40px 0 80px 0; background: #fff; }
+.product-tabs-section { padding: 20px 0 80px 0; background: #fff; }
 .product-tabs-container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
 .tabs-header { display: flex; gap: 20px; justify-content: center; margin-bottom: 20px; }
-.tab-btn { background: none; border: none; font-weight: 600; color: #666; padding: 10px 14px; cursor: pointer; }
+.tab-btn { background: none; border: none; font-weight: 600; color: #666; padding: 10px 14px; cursor: pointer; font-size: 18px; }
 .tab-btn.active { color: #333; border-bottom: 2px solid #B88E2F; }
-.tabs-content { border-top: 1px solid #eee; padding-top: 24px; }
+.tabs-content { padding-top: 24px; }
 .tab-panel { display: none; color: #666; line-height: 1.7; }
 .tab-panel.active { display: block; }
 .tab-images { margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -1673,12 +1673,448 @@ body.has-fixed-header {
 .modal-label { display: grid; gap: 6px; font-size: 13px; color: #B88E2F; font-weight: 600; }
 .modal-input { height: 44px; padding: 0 12px; border: 1px solid #e6e6e6; border-radius: 10px; outline: none; background: #fff; }
 .modal-input:focus { border-color: #B88E2F; box-shadow: 0 0 0 3px rgba(184, 142, 47, .15); }
+.modal-input:disabled { background-color: #f9f9f9; cursor: not-allowed; }
+.modal-error { 
+  background-color: #fee; 
+  border: 1px solid #fcc; 
+  color: #c33; 
+  padding: 10px 12px; 
+  border-radius: 8px; 
+  font-size: 13px; 
+  margin: 0 16px;
+}
 .modal-row { display:flex; align-items:center; justify-content: space-between; gap: 10px; }
 .modal-checkbox { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: #555; }
 .modal-link { color: #B88E2F; text-decoration: none; font-weight: 700; }
 .modal-link:hover { text-decoration: underline; }
 .modal-primary-btn { height: 46px; background: #FFF9E5; color: #B88E2F; border: none; border-radius: 12px; cursor: pointer; font-weight: 800; letter-spacing: .2px; }
 .modal-primary-btn:hover { background: #F3EBD3; }
+
+/* Profile Dropdown Styles */
+.account-section {
+  position: relative;
+}
+
+.icon-button.authenticated {
+  position: relative;
+}
+
+.user-indicator {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: #B88E2F;
+  color: white;
+  font-size: 10px;
+  font-weight: 700;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid white;
+}
+
+.profile-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: white;
+  border: 1px solid #e6e6e6;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  min-width: 280px;
+  z-index: 1000;
+  margin-top: 8px;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.profile-avatar {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #B88E2F, #D4B068);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: white;
+  font-size: 16px;
+}
+
+.profile-info {
+  flex: 1;
+}
+
+.profile-name {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.profile-email {
+  font-size: 12px;
+  color: #666;
+  margin-top: 2px;
+}
+
+.profile-menu {
+  padding: 8px 0;
+}
+
+.profile-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  text-decoration: none;
+  color: #333;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  border: none;
+  background: none;
+  width: 100%;
+  cursor: pointer;
+}
+
+.profile-menu-item:hover {
+  background-color: #f8f8f8;
+}
+
+.profile-menu-item.logout {
+  color: #dc3545;
+}
+
+.profile-menu-item.logout:hover {
+  background-color: #fef2f2;
+}
+
+.profile-menu-item:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.profile-divider {
+  height: 1px;
+  background: #f0f0f0;
+  margin: 8px 0;
+}
+
+/* Loading Spinner */
+.loading-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+.loading-spinner {
+  text-align: center;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #B88E2F;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Profile Pages */
+.profile-page, .orders-page, .wishlist-page, .addresses-page {
+  min-height: 100vh;
+  background: #f8f9fa;
+  padding: 40px 0;
+}
+
+.profile-container, .orders-container, .wishlist-container, .addresses-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.profile-header, .orders-header, .wishlist-header, .addresses-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.profile-header h1, .orders-header h1, .wishlist-header h1, .addresses-header h1 {
+  font-size: 32px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.profile-header p, .orders-header p, .wishlist-header p, .addresses-header p {
+  color: #666;
+  font-size: 16px;
+}
+
+.profile-content {
+  display: grid;
+  grid-template-columns: 250px 1fr;
+  gap: 40px;
+  background: white;
+  border-radius: 12px;
+  padding: 30px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.profile-sidebar {
+  border-right: 1px solid #e6e6e6;
+  padding-right: 30px;
+}
+
+.profile-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: none;
+  background: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #666;
+  transition: all 0.2s;
+  text-align: left;
+}
+
+.nav-item:hover {
+  background: #f8f8f8;
+  color: #333;
+}
+
+.nav-item.active {
+  background: #FFF9E5;
+  color: #B88E2F;
+  font-weight: 600;
+}
+
+.profile-main {
+  padding-left: 30px;
+}
+
+.profile-section {
+  max-width: 600px;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e6e6e6;
+}
+
+.section-header h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+}
+
+.edit-btn, .add-btn {
+  background: #B88E2F;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.edit-btn:hover, .add-btn:hover {
+  background: #A67C00;
+}
+
+.profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-group label {
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.form-group input {
+  padding: 12px 16px;
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.form-group input.editable {
+  border-color: #B88E2F;
+}
+
+.form-group input.readonly {
+  background: #f8f9fa;
+  color: #666;
+}
+
+.form-group input:focus {
+  outline: none;
+  border-color: #B88E2F;
+  box-shadow: 0 0 0 3px rgba(184, 142, 47, 0.1);
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #B88E2F;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.save-btn {
+  background: #B88E2F;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.save-btn:hover {
+  background: #A67C00;
+}
+
+.cancel-btn {
+  background: #f8f9fa;
+  color: #666;
+  border: 1px solid #e6e6e6;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.cancel-btn:hover {
+  background: #e9ecef;
+  color: #333;
+}
+
+/* Empty States */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+.empty-icon {
+  font-size: 64px;
+  margin-bottom: 20px;
+}
+
+.empty-state h2, .empty-state h3 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
+}
+
+.empty-state p {
+  color: #666;
+  font-size: 16px;
+  margin-bottom: 24px;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.shop-btn {
+  background: #B88E2F;
+  color: white;
+  text-decoration: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 600;
+  display: inline-block;
+  transition: background 0.2s;
+}
+
+.shop-btn:hover {
+  background: #A67C00;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .profile-content {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+  
+  .profile-sidebar {
+    border-right: none;
+    border-bottom: 1px solid #e6e6e6;
+    padding-right: 0;
+    padding-bottom: 20px;
+  }
+  
+  .profile-main {
+    padding-left: 0;
+  }
+  
+  .profile-nav {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 4px;
+  }
+  
+  .nav-item {
+    white-space: nowrap;
+    min-width: fit-content;
+  }
+}
 .modal-divider { position: relative; text-align: center; color: #888; font-size: 12px; }
 .modal-divider::before, .modal-divider::after { content: ""; position: absolute; top: 50%; width: 38%; height: 1px; background: #eee; }
 .modal-divider::before { left: 0; }
